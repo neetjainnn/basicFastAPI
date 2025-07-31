@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     database_url: str
     secret_key: str
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int
 
     class Config:
-        env_file = "render/.env"
+        env_file = "./render/.env"  
+
 
 settings = Settings()
