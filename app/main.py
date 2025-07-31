@@ -18,6 +18,19 @@ from sqlalchemy.orm import Session
 
 
 
+
+# for render 
+import os
+
+# Dynamically load config and database modules based on environment
+if os.getenv("RENDER_DEPLOY") == "true":
+    from render import config, database
+else:
+    from app import config, database
+
+
+
+
 app = FastAPI()
 
 origins = ["*"]  #here we put all the domains from where we are supposed to fetch the data 
