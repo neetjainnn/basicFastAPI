@@ -31,18 +31,25 @@ def get_posts(
     return [{"post": post, "votes": votes} for post, votes in results]
 
 
+import traceback
+
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse)
-def create_post(post: schemas.PostBase, db: Session = Depends(get_db), curr_user: int = Depends(oauth2.get_current_user)):
-    new_post = models.Posts(
-        title=post.title,
-        content=post.content,
-        published=post.published,
-        user_id=curr_user.id
-    )
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    return new_post
+def create_post(post: schemas.PostBase, db: Session = Depends(get_db), curr_user: models.Users = Depends(oauth2.get_current_user)):
+    try:
+        new_post = models.Posts(
+            title=post.title,
+            content=post.content,
+            published=post.published,
+            user_id=curr_user.id
+        )
+        db.add(new_post)
+        db.commit()
+        db.refresh(new_post)
+        return new_post
+    except Exception as e:
+        print("Error in create_post:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal Server Error: " + str(e))
 
 
 @router.get("/latest", response_model=schemas.PostResponse)
@@ -77,7 +84,8 @@ def delete_post(id: int, db: Session = Depends(get_db), curr_user: int = Depends
     post = post_query.first()
     if not post:
         raise HTTPException(status_code=404, detail=f"Post with id {id} not found")
-
+    if post.user_id != curr_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this post")
     post_query.delete(synchronize_session=False)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

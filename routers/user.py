@@ -10,17 +10,27 @@ router = APIRouter(
 )
 
 
+from sqlalchemy.exc import IntegrityError
+
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
-def create_user(user : schemas.UserCreate, db : Session = Depends(get_db)):
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Check if email already exists
+    existing_user = db.query(models.Users).filter(models.Users.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=409, detail="Email already registered")
 
-    hashed_pasword = utils.hash(user.password)
-    user.password = hashed_pasword
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
 
-    new_user = models.Users(password = user.password, email = user.email)
+    new_user = models.Users(password=user.password, email=user.email)
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return  new_user
+    try:
+        db.commit()
+        db.refresh(new_user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Database error during user creation")
+    return new_user
 
 @router.get("/{id}", response_model=schemas.UserResponse)
 def get_user(id: int, db: Session = Depends(get_db)):
